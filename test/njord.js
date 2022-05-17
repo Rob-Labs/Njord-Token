@@ -226,10 +226,7 @@ describe('Njord Token', function () {
         'Ownable: caller is not the owner',
       );
 
-      expect(await token.connect(treasuryFund).toggleTradingStatus()).to.emit(
-        token,
-        'LogTradingStatusChanged',
-      );
+      expect().to.emit(token, 'LogTradingStatusChanged');
     });
 
     it('Add Whitelisted Address', async function () {
