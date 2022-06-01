@@ -36,7 +36,7 @@ contract NjordContract is ERC20Detailed, Ownable {
     mapping(address => bool) public _isFeeExempt;
 
     modifier validRecipient(address to) {
-        require(to != address(0x0), "Address Zero Not Valid Recipient");
+        require(to != address(0x0), "Address Zero Not Accepted");
         _;
     }
 
@@ -96,26 +96,13 @@ contract NjordContract is ERC20Detailed, Ownable {
     mapping(address => bool) public blacklist;
 
     constructor(
+        address _router,
         address payable _autoLiquidityFund,
         address payable _treasuryFund,
         address payable _njordRiskFreeFund,
         address payable _supplyControl
     ) ERC20Detailed("Njord", "NJORD", uint8(DECIMALS)) Ownable() {
-        router = IPancakeSwapRouter( // Router
-            // Ethereum mainnet
-            // 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
-            // Ropsten
-            // 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
-            // Bsc Mainnet
-            // 0x10ED43C718714eb63d5aA57B78B54704E256024E
-            // Bsc Testnet
-            0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3
-            // Polygon Mainnet
-            // Mumbai Polygon Testnet
-            // 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff
-            // AVAX TraderJoe
-            // 0x60aE616a2155Ee3d9A68541Ba4544862310933d4
-        );
+        router = IPancakeSwapRouter(_router);
 
         pairAddress = IPancakeSwapFactory(router.factory()).createPair(router.WETH(), address(this));
 
@@ -144,6 +131,7 @@ contract NjordContract is ERC20Detailed, Ownable {
     }
 
     function setRebaseRate(uint256 _rebaseRate) external onlyOwner {
+        require(_rebaseRate != ownerRebaseRate, "Nothing Changed");
         emit LogRebaseRateChanged(ownerRebaseRate, _rebaseRate);
         ownerRebaseRate = _rebaseRate;
     }
@@ -281,11 +269,11 @@ contract NjordContract is ERC20Detailed, Ownable {
             _treasuryFee = treasuryFee.add(sellFee);
         }
 
-        uint256 feeAmount = gonAmount.div(feeDenominator).mul(_totalFee);
+        uint256 feeAmount = gonAmount.mul(_totalFee).div(feeDenominator);
 
-        _gonBalances[supplyControl] = _gonBalances[supplyControl].add(gonAmount.div(feeDenominator).mul(supplyControlFee));
-        _gonBalances[address(this)] = _gonBalances[address(this)].add(gonAmount.div(feeDenominator).mul(_treasuryFee.add(njordRiskFreeFundFee)));
-        _gonBalances[autoLiquidityFund] = _gonBalances[autoLiquidityFund].add(gonAmount.div(feeDenominator).mul(liquidityFee));
+        _gonBalances[supplyControl] = _gonBalances[supplyControl].add(gonAmount.mul(supplyControlFee).div(feeDenominator));
+        _gonBalances[address(this)] = _gonBalances[address(this)].add(gonAmount.mul(_treasuryFee.add(njordRiskFreeFundFee)).div(feeDenominator));
+        _gonBalances[autoLiquidityFund] = _gonBalances[autoLiquidityFund].add(gonAmount.mul(liquidityFee).div(feeDenominator));
 
         emit Transfer(sender, address(this), feeAmount.div(_gonsPerFragment));
         return gonAmount.sub(feeAmount);
@@ -364,6 +352,7 @@ contract NjordContract is ERC20Detailed, Ownable {
     }
 
     function setAutoRebase(bool _flag) external onlyOwner {
+        require(_flag != _autoRebase, "Nothing Changed");
         emit LogAutoRebaseChanged(_autoRebase, _flag);
         if (_flag) {
             _autoRebase = _flag;
@@ -374,6 +363,7 @@ contract NjordContract is ERC20Detailed, Ownable {
     }
 
     function setAutoAddLiquidity(bool _flag) external onlyOwner {
+        require(_flag != _autoAddLiquidity, "Nothing Changed");
         emit LogAutoLiquidityChanged(_autoAddLiquidity, _flag);
         if (_flag) {
             _autoAddLiquidity = _flag;
@@ -431,7 +421,7 @@ contract NjordContract is ERC20Detailed, Ownable {
         address _treasuryFund,
         address _njordRiskFreeFund,
         address _supplyControl
-    ) external onlyOwner {
+    ) external onlyOwner validRecipient(_autoLiquidityFund) validRecipient(_treasuryFund) validRecipient(_njordRiskFreeFund) validRecipient(_supplyControl) {
         emit LogFeeReceiversChanged(_autoLiquidityFund, _treasuryFund, _njordRiskFreeFund, _supplyControl);
         autoLiquidityFund = _autoLiquidityFund;
         treasuryFund = _treasuryFund;
@@ -444,12 +434,14 @@ contract NjordContract is ERC20Detailed, Ownable {
         return accuracy.mul(liquidityBalance.mul(2)).div(getCirculatingSupply());
     }
 
-    function setWhitelist(address _addr) external onlyOwner {
+    function setWhitelist(address _addr) external onlyOwner validRecipient(_addr) {
+        require(!_isFeeExempt[_addr], "Already Whitelisted");
         _isFeeExempt[_addr] = true;
         emit LogWhitelistAdded(_addr);
     }
 
-    function removeWhitelist(address _addr) external onlyOwner {
+    function removeWhitelist(address _addr) external onlyOwner validRecipient(_addr) {
+        require(_isFeeExempt[_addr], "Already Not Whitelisted");
         _isFeeExempt[_addr] = false;
         emit LogWhitelistRemoved(_addr);
     }
@@ -460,7 +452,8 @@ contract NjordContract is ERC20Detailed, Ownable {
         blacklist[_botAddress] = _flag;
     }
 
-    function setPairAddress(address _pairAddress) external onlyOwner {
+    function setPairAddress(address _pairAddress) external onlyOwner validRecipient(_pairAddress) {
+        require(pairAddress != _pairAddress, "Nothing Changed");
         emit LogPairAddressChanged(pairAddress, _pairAddress);
 
         pairAddress = _pairAddress;

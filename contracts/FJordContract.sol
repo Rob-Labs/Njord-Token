@@ -171,11 +171,11 @@ contract FjordContract is ERC20, Ownable {
             _treasuryFee = treasuryFee.add(sellFee);
         }
 
-        uint256 feeAmount = amount.div(feeDenominator).mul(_totalFee);
-        _balances[autoLiquidityFund] = _balances[autoLiquidityFund].add(amount.div(feeDenominator).mul(liquidityFee));
-        _balances[treasuryFund] = _balances[treasuryFund].add(amount.div(feeDenominator).mul(treasuryFee));
-        _balances[njordRiskFreeFund] = _balances[njordRiskFreeFund].add(amount.div(feeDenominator).mul(njordRiskFreeFundFee));
-        _balances[supplyControl] = _balances[supplyControl].add(amount.div(feeDenominator).mul(supplyControlFee));
+        uint256 feeAmount = amount.mul(_totalFee).div(feeDenominator);
+        _balances[autoLiquidityFund] = _balances[autoLiquidityFund].add(amount.mul(liquidityFee).div(feeDenominator));
+        _balances[treasuryFund] = _balances[treasuryFund].add(amount.mul(treasuryFee).div(feeDenominator));
+        _balances[njordRiskFreeFund] = _balances[njordRiskFreeFund].add(amount.mul(njordRiskFreeFundFee).div(feeDenominator));
+        _balances[supplyControl] = _balances[supplyControl].add(amount.mul(supplyControlFee).div(feeDenominator));
 
         return amount.sub(feeAmount);
     }
