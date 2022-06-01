@@ -2,13 +2,12 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 // const dotenv = require("dotenv");
 
-const uniswapV2FactoryAbi = require("./abi/IUniswapV2Factory.json").abi;
-const uniswapV2RouterAbi = require("./abi/IUniswapV2Router02.json").abi;
-const uniswapV2PairAbi = require("./abi/IUniswapV2Pair.json").abi;
-const factoryAddress = "0xB7926C0430Afb07AA7DEfDE6DA862aE0Bde767bc";
-const routerAddress = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
-const deadAddress = "0x000000000000000000000000000000000000dEaD";
-const zeroAddress = "0x0000000000000000000000000000000000000000";
+const {
+  NJORD_TOTAL_SUPPLY,
+  INITIAL_NJORD_LIQUIDITY,
+  NJORD_INITIAL_SUPPLY,
+  NJORD_DECIMALS,
+} = require("./helpers/utils");
 
 describe("Njord Token", function () {
   let deployer;
@@ -25,31 +24,17 @@ describe("Njord Token", function () {
   let client3;
   let client4;
   let client5;
-  let client6;
-  let client7;
-  let client8;
-  let client9;
-  let client10;
   let emptyAddr;
   let newWallet;
-  let addrs;
+  let pancakeDeployer;
+  let pancakeFeeReceiver;
 
-  let token;
+  let pancakeFactoryContract;
+  let pancakeRouterContract;
+  let pancakePairContract;
+  let wbnbContract;
 
-  const maxSupplyBn = ethers.BigNumber.from("400000000000000");
-  const initialSupplyBn = ethers.BigNumber.from("40000000000");
-
-  beforeEach(async function () {
-    // await ethers.provider.send("hardhat_reset"); // This resets removes the fork
-    // Reset the fork
-    await ethers.provider.send("hardhat_reset", [
-      {
-        forking: {
-          jsonRpcUrl: process.env.BSCTESTNET_URL,
-        },
-      },
-    ]);
-    // Get signers
+  before(async function () {
     [
       deployer,
       autoLiquidityFund,
@@ -65,30 +50,56 @@ describe("Njord Token", function () {
       client3,
       client4,
       client5,
-      client6,
-      client7,
-      client8,
-      client9,
-      client10,
       emptyAddr,
       newWallet,
-      ...addrs
+      pancakeDeployer,
+      pancakeFeeReceiver,
     ] = await ethers.getSigners();
-    // Deploy contract
-    const Token = await ethers.getContractFactory("NjordContract");
-    token = await Token.deploy(
-      autoLiquidityFund.address,
-      treasuryFund.address,
-      njordRiskFreeFund.address,
-      supplyControl.address,
+    // deploy pancake factory first
+    const PancakeFactory = await ethers.getContractFactory(
+      "PancakeFactory",
+      pancakeDeployer,
     );
-    await token.deployed();
+    pancakeFactoryContract = await PancakeFactory.deploy(
+      pancakeFeeReceiver.address,
+    );
+    await pancakeFactoryContract.deployed();
 
-    // get router and pair
-    const router = new ethers.Contract(routerAddress, uniswapV2RouterAbi);
+    // deploy WBNB factory first
+    const WBNBContract = await ethers.getContractFactory(
+      "WBNB",
+      pancakeDeployer,
+    );
+    wbnbContract = await WBNBContract.deploy();
+    await wbnbContract.deployed();
+
+    // deploy Pancake Router first
+    const routerContract = await ethers.getContractFactory(
+      "PancakeRouter",
+      pancakeDeployer,
+    );
+    pancakeRouterContract = await routerContract.deploy(
+      pancakeFactoryContract.address,
+      wbnbContract.address,
+    );
+    await pancakeRouterContract.deployed();
   });
 
   describe("Deployment", function () {
+    let token;
+
+    before(async function () {
+      // Deploy contract
+      const Token = await ethers.getContractFactory("NjordContract");
+      token = await Token.deploy(
+        pancakeRouterContract.address,
+        autoLiquidityFund.address,
+        treasuryFund.address,
+        njordRiskFreeFund.address,
+        supplyControl.address,
+      );
+      await token.deployed();
+    });
     it("Has a name (Njord)", async function () {
       expect(await token.name()).to.equal("Njord");
     });
@@ -98,11 +109,11 @@ describe("Njord Token", function () {
     });
 
     it("Has 5 decimals", async function () {
-      expect(await token.decimals()).to.equal(5);
+      expect(await token.decimals()).to.equal(NJORD_DECIMALS);
     });
 
     it("Has 400 Thousand initial supply tokens with 5 decimal units (400,000 x 1e5)", async function () {
-      expect(await token.totalSupply()).to.equal(initialSupplyBn);
+      expect(await token.totalSupply()).to.equal(NJORD_INITIAL_SUPPLY);
     });
 
     it("Correct TreasuryFund address wallet", async function () {
@@ -155,9 +166,22 @@ describe("Njord Token", function () {
   });
 
   describe("Distribution", function () {
+    before(async function () {
+      // Deploy contract
+      const Token = await ethers.getContractFactory("NjordContract");
+      token = await Token.deploy(
+        pancakeRouterContract.address,
+        autoLiquidityFund.address,
+        treasuryFund.address,
+        njordRiskFreeFund.address,
+        supplyControl.address,
+      );
+      await token.deployed();
+    });
+
     it("TreasuryFund start with 100% balance", async function () {
       expect(await token.balanceOf(treasuryFund.address)).to.equal(
-        initialSupplyBn,
+        NJORD_INITIAL_SUPPLY,
       );
     });
 
@@ -171,6 +195,19 @@ describe("Njord Token", function () {
   });
 
   describe("Transactions at Transfer is Disabled State", function () {
+    before(async function () {
+      // Deploy contract
+      const Token = await ethers.getContractFactory("NjordContract");
+      token = await Token.deploy(
+        pancakeRouterContract.address,
+        autoLiquidityFund.address,
+        treasuryFund.address,
+        njordRiskFreeFund.address,
+        supplyControl.address,
+      );
+      await token.deployed();
+    });
+
     it("Transfer from Whitelisted Address will Success when Presale Time", async function () {
       // Try to send 500 token from treasuryFund to client1 (0 tokens).
       await token.connect(treasuryFund).transfer(client1.address, 500);
@@ -181,17 +218,30 @@ describe("Njord Token", function () {
       // Try to send 100 token from client1 (500 tokens) to client5 (0 tokens).
       // `require` will evaluate false and revert the transaction.
 
-      expect(
+      await expect(
         token.connect(client1).transfer(client5.address, 100),
       ).to.be.revertedWith("Transfer State is disabled");
     });
   });
 
   describe("Only Owner Write Methods (Only TreasuryFund Address can use them)", function () {
-    it("Set Auto Rebase", async function () {
-      expect(token.connect(client1).setAutoRebase(true)).to.be.revertedWith(
-        "Ownable: caller is not the owner",
+    before(async function () {
+      // Deploy contract
+      const Token = await ethers.getContractFactory("NjordContract");
+      token = await Token.deploy(
+        pancakeRouterContract.address,
+        autoLiquidityFund.address,
+        treasuryFund.address,
+        njordRiskFreeFund.address,
+        supplyControl.address,
       );
+      await token.deployed();
+    });
+
+    it("Set Auto Rebase", async function () {
+      await expect(
+        token.connect(client1).setAutoRebase(true),
+      ).to.be.revertedWith("Ownable: caller is not the owner");
       await expect(token.connect(treasuryFund).setAutoRebase(true)).to.emit(
         token,
         "LogAutoRebaseChanged",
@@ -200,9 +250,9 @@ describe("Njord Token", function () {
 
     it("Toggle Owner Rebase", async function () {
       const initialOwnerRebaseState = await token.isOwnerRebaseEnabled();
-      expect(token.connect(client1).toggleOwnerRebase()).to.be.revertedWith(
-        "Ownable: caller is not the owner",
-      );
+      await expect(
+        token.connect(client1).toggleOwnerRebase(),
+      ).to.be.revertedWith("Ownable: caller is not the owner");
 
       expect(await token.connect(treasuryFund).toggleOwnerRebase()).to.emit(
         token,
@@ -211,9 +261,9 @@ describe("Njord Token", function () {
     });
 
     it("Toggle Transfer State", async function () {
-      expect(token.connect(client1).toggleTransferStatus()).to.be.revertedWith(
-        "Ownable: caller is not the owner",
-      );
+      await expect(
+        token.connect(client1).toggleTransferStatus(),
+      ).to.be.revertedWith("Ownable: caller is not the owner");
 
       expect(await token.connect(treasuryFund).toggleTransferStatus()).to.emit(
         token,
@@ -222,9 +272,9 @@ describe("Njord Token", function () {
     });
 
     it("Toggle Trading State", async function () {
-      expect(token.connect(client1).toggleTradingStatus()).to.be.revertedWith(
-        "Ownable: caller is not the owner",
-      );
+      await expect(
+        token.connect(client1).toggleTradingStatus(),
+      ).to.be.revertedWith("Ownable: caller is not the owner");
 
       expect().to.emit(token, "LogTradingStatusChanged");
     });

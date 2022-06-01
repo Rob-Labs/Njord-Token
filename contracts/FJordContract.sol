@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
-import "./INjord.sol";
-import "./SafeMath.sol";
-import "./SafeERC20.sol";
-import "./Address.sol";
-import "./ERC20.sol";
-import "./Ownable.sol";
+import "./interfaces/INJORD.sol";
+import "./libraries/SafeMath.sol";
+import "./libraries/SafeERC20.sol";
+import "./libraries/Address.sol";
+import "./libraries/ERC20.sol";
+import "./libraries/Ownable.sol";
 
 contract FjordContract is ERC20, Ownable {
     using SafeERC20 for ERC20;

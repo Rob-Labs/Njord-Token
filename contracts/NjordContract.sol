@@ -2,14 +2,15 @@
 
 pragma solidity 0.8.7;
 
-import "./SafeMathInt.sol";
-import "./SafeMath.sol";
-import "./IERC20.sol";
-import "./ERC20Detailed.sol";
-import "./IPancakeSwapPair.sol";
-import "./IPancakeSwapRouter.sol";
-import "./IPancakeSwapFactory.sol";
-import "./Ownable.sol";
+import "./libraries/SafeMathInt.sol";
+import "./libraries/SafeMath.sol";
+import "./interfaces/IERC20.sol";
+import "./libraries/SafeMath.sol";
+import "./libraries/ERC20Detailed.sol";
+import "./interfaces/IPancakeSwapPair.sol";
+import "./interfaces/IPancakeSwapRouter.sol";
+import "./interfaces/IPancakeSwapFactory.sol";
+import "./libraries/Ownable.sol";
 
 contract NjordContract is ERC20Detailed, Ownable {
     using SafeMath for uint256;
