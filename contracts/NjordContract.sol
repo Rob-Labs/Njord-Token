@@ -47,7 +47,7 @@ contract NjordContract is ERC20Detailed, Ownable {
 
     uint256 private constant INITIAL_FRAGMENTS_SUPPLY = 400 * 10**3 * 10**DECIMALS;
 
-    uint256 public liquidityFee = 40;
+    uint256 public liquidityFee = 20;
     uint256 public treasuryFee = 25;
     uint256 public njordRiskFreeFundFee = 50;
     uint256 public sellFee = 20;
@@ -406,7 +406,7 @@ contract NjordContract is ERC20Detailed, Ownable {
     }
 
     function getCirculatingSupply() public view returns (uint256) {
-        return (TOTAL_GONS.sub(_gonBalances[DEAD]).sub(_gonBalances[ZERO])).div(_gonsPerFragment);
+        return (TOTAL_GONS.sub(_gonBalances[DEAD])).div(_gonsPerFragment);
     }
 
     function isNotInSwap() external view returns (bool) {
