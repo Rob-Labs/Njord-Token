@@ -18,7 +18,7 @@ contract NjordContract is ERC20Detailed, Ownable {
 
     event LogRebase(uint256 indexed epoch, uint256 totalSupply);
     event LogRebaseRateChanged(uint256 oldRate, uint256 newRate);
-    event LogRebaseRateOwnerChanged(bool oldStatus, bool newStatus);
+    event LogRebaseOwnerChanged(bool oldStatus, bool newStatus);
     event LogAutoRebaseChanged(bool oldValue, bool newValue);
     event LogAutoLiquidityChanged(bool oldValue, bool newValue);
     event LogFeeReceiversChanged(address newAutoLiquidityFund, address newTreasuryFund, address newNjordRiskFreeFund, address newSupplyControl);
@@ -138,7 +138,7 @@ contract NjordContract is ERC20Detailed, Ownable {
     }
 
     function toggleOwnerRebase() external onlyOwner {
-        emit LogRebaseRateOwnerChanged(isOwnerRebaseEnabled, isOwnerRebaseEnabled);
+        emit LogRebaseOwnerChanged(isOwnerRebaseEnabled, isOwnerRebaseEnabled);
         isOwnerRebaseEnabled = !isOwnerRebaseEnabled;
     }
 
