@@ -14,7 +14,7 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-
+  const routerAddress = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
   const autoLiquidityFund = "0x6404e52b500a7685dd7e9463718a85e3be7059b7";
   const treasuryFund = "0xd03d9e90f91229e372851eb9f7361ecf266630ac";
   const njordRiskFreeFund = "0xd93d4ce55c79d74e560e1517f3a825ce509f7138";
@@ -22,6 +22,7 @@ async function main() {
 
   const NjordContract = await hre.ethers.getContractFactory("NjordContract");
   const njordContract = await NjordContract.deploy(
+    routerAddress,
     autoLiquidityFund,
     treasuryFund,
     njordRiskFreeFund,
@@ -33,11 +34,53 @@ async function main() {
   console.log("NjordContract deployed to:", njordContract.address);
 
   const FjordContract = await hre.ethers.getContractFactory("FjordContract");
-  const fjordContract = await FjordContract.deploy(njordContract.address);
+  const fjordContract = await FjordContract.deploy(
+    njordContract.address,
+    autoLiquidityFund,
+    treasuryFund,
+    njordRiskFreeFund,
+    supplyControl,
+  );
 
   await fjordContract.deployed();
 
   console.log("FjordContract deployed to:", fjordContract.address);
+
+  try {
+    await hre.run("verify", {
+      address: njordContract.address,
+      constructorArgsParams: [
+        routerAddress,
+        autoLiquidityFund,
+        treasuryFund,
+        njordRiskFreeFund,
+        supplyControl,
+      ],
+    });
+  } catch (error) {
+    console.error(error);
+    console.log(
+      `Njord Contract at address ${njordContract.address} is already verified`,
+    );
+  }
+
+  try {
+    await hre.run("verify", {
+      address: fjordContract.address,
+      constructorArgsParams: [
+        njordContract.address,
+        autoLiquidityFund,
+        treasuryFund,
+        njordRiskFreeFund,
+        supplyControl,
+      ],
+    });
+  } catch (error) {
+    console.error(error);
+    console.log(
+      `Njord Contract at address ${fjordContract.address} is already verified`,
+    );
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
