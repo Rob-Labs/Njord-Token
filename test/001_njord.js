@@ -208,6 +208,41 @@ describe("Njord Token", function () {
   });
 
   describe("Function Test", function () {
+    describe("setFee Function Test", function () {
+      before(async function () {
+        // Deploy contract
+        const Token = await ethers.getContractFactory("NjordContract");
+        token = await Token.deploy(
+          pancakeRouterContract.address,
+          autoLiquidityFund.address,
+          treasuryFund.address,
+          njordRiskFreeFund.address,
+          supplyControl.address,
+        );
+        await token.deployed();
+      });
+
+      it("Only Onwer can call this function", async function () {
+        await expect(
+          token.connect(client1).setFee(20, 20, 20, 20, 20),
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(token.connect(treasuryFund).setFee(20, 20, 20, 20, 20)).to
+          .not.be.reverted;
+      });
+
+      it("Should set correct value and emit event LogFeeChanged", async function () {
+        expect(await token.connect(treasuryFund).setFee(10, 10, 10, 10, 10))
+          .to.emit(token, "LogFeeChanged")
+          .withArgs(10, 10, 10, 10, 10);
+
+        expect(await token.liquidityFee()).to.eq(10);
+        expect(await token.treasuryFee()).to.eq(10);
+        expect(await token.njordRiskFreeFundFee()).to.eq(10);
+        expect(await token.supplyControlFee()).to.eq(10);
+        expect(await token.sellFee()).to.eq(10);
+      });
+    });
+
     describe("setRebaseRate Function Test", function () {
       before(async function () {
         // Deploy contract

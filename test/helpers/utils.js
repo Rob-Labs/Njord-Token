@@ -6,6 +6,7 @@ const formatUnits = utils.formatUnits;
 const MaxUint256 = ethers.constants.MaxUint256;
 
 const NJORD_DECIMALS = 5;
+const FJORD_DECIMALS = 18;
 const NJORD_TOTAL_SUPPLY = parseUnits("1000000000", NJORD_DECIMALS); // 1B NJORD
 const NJORD_INITIAL_SUPPLY = parseUnits("400000", NJORD_DECIMALS); // 400k NJORD
 const AIRDROP_VALUE = parseUnits("1000", NJORD_DECIMALS); // 1K NJORD
@@ -27,4 +28,5 @@ module.exports = {
   DEFAULT_NJORD_TRANSFER,
   SWAP_VALUE,
   NJORD_DECIMALS,
+  FJORD_DECIMALS,
 };

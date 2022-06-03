@@ -7,14 +7,27 @@ import "./libraries/SafeERC20.sol";
 import "./libraries/Address.sol";
 import "./libraries/ERC20.sol";
 import "./libraries/Ownable.sol";
+import "./libraries/ReentrancyGuard.sol";
 
-contract FjordContract is ERC20, Ownable {
+contract FjordContract is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
     using Address for address;
     using SafeMath for uint256;
 
     address public immutable NJORD;
     bool public live;
+
+    // events
+    event LogAutoLiquidityFundChanged(address oldAutoLiquidityFund, address newAutoLiquidityFund);
+    event LogTreasuryFundChanged(address oldTreasuryFund, address newTreasuryFund);
+    event LogRiskFreeFundChanged(address oldRiskFreeFund, address newRiskFreeFund);
+    event LogSupplyControlChanged(address oldSupplyControl, address newSupplyControl);
+    event LogAddressWhitelistChanged(address addr, bool oldStatus, bool newStatus);
+    event LogLiveStatusChanged(bool oldStatus, bool newStatus);
+    event LogSetPairWithFee(address pairAdrress);
+    event LogWrap(address addr, uint256 amount);
+    event LogUnwrap(address addr, uint256 amount);
+    event LogFeeChanged(uint256 liquidityFee, uint256 treasuryFee, uint256 njordRiskFreeFundFee, uint256 supplyControlFee, uint256 sellFee);
 
     // Fees section
     mapping(address => bool) public _pairWithFee;
@@ -33,17 +46,28 @@ contract FjordContract is ERC20, Ownable {
     address public njordRiskFreeFund;
     address public supplyControl;
 
-    constructor(address _NJORD) ERC20("FJord", "FJORD", 18) Ownable() {
-        require(_NJORD != address(0), "NJORD Address cannot be zero");
+    // modifier
+    modifier validRecipient(address to) {
+        require(to != address(0x0), "Address Zero Not Accepted");
+        _;
+    }
+
+    constructor(
+        address _NJORD,
+        address payable _autoLiquidityFund,
+        address payable _treasuryFund,
+        address payable _njordRiskFreeFund,
+        address payable _supplyControl
+    ) ERC20("Fjord", "FJORD", 18) Ownable() {
         NJORD = _NJORD;
         live = false;
 
         _isFeeExempt[msg.sender] = true;
 
-        autoLiquidityFund = 0x6404e52B500a7685Dd7E9463718A85E3BE7059b7;
-        treasuryFund = 0xD03D9e90f91229e372851eB9f7361Ecf266630Ac;
-        njordRiskFreeFund = 0xd93D4cE55C79d74e560e1517f3A825ce509f7138;
-        supplyControl = 0xf60D9700a3c24a393F7106c0948188b92ec5A44C;
+        autoLiquidityFund = _autoLiquidityFund;
+        treasuryFund = _treasuryFund;
+        njordRiskFreeFund = _njordRiskFreeFund;
+        supplyControl = _supplyControl;
     }
 
     /**
@@ -51,11 +75,10 @@ contract FjordContract is ERC20, Ownable {
         @param _amount uint
         @return uint
      */
-    function wrap(uint256 _amount) external returns (uint256) {
+    function wrap(uint256 _amount) external nonReentrant returns (uint256) {
         require(live == true, "FJORD: wrapping disabled");
 
         IERC20(NJORD).transferFrom(msg.sender, address(this), _amount);
-
         uint256 value = NJORDToFJORD(_amount);
         _mint(msg.sender, value);
         return value;
@@ -66,7 +89,7 @@ contract FjordContract is ERC20, Ownable {
         @param _amount uint
         @return uint
      */
-    function unwrap(uint256 _amount) external returns (uint256) {
+    function unwrap(uint256 _amount) external nonReentrant returns (uint256) {
         require(live == true, "FJORD: unwrapping disabled");
 
         _burn(msg.sender, _amount);
@@ -185,26 +208,24 @@ contract FjordContract is ERC20, Ownable {
         @param _live bool
      */
     function setLiveStatus(bool _live) external onlyOwner {
+        require(live != _live, "Nothing Changed");
+        emit LogLiveStatusChanged(live, _live);
         live = _live;
     }
 
-    /**
-        @notice set new fee receivers
-        @param _autoLiquidityFund address
-        @param _treasuryFund address
-        @param _njordRiskFreeFund address
-        @param _supplyControl address
-     */
-    function setFeeReceivers(
-        address _autoLiquidityFund,
-        address _treasuryFund,
-        address _njordRiskFreeFund,
-        address _supplyControl
+    function setFee(
+        uint256 _liquidityFee,
+        uint256 _treasuryFee,
+        uint256 _njordRiskFreeFundFee,
+        uint256 _supplyControlFee,
+        uint256 _sellFee
     ) external onlyOwner {
-        autoLiquidityFund = _autoLiquidityFund;
-        treasuryFund = _treasuryFund;
-        njordRiskFreeFund = _njordRiskFreeFund;
-        supplyControl = _supplyControl;
+        emit LogFeeChanged(_liquidityFee, _treasuryFee, _njordRiskFreeFundFee, _supplyControlFee, _sellFee);
+        liquidityFee = _liquidityFee;
+        treasuryFee = _treasuryFee;
+        njordRiskFreeFundFee = _njordRiskFreeFundFee;
+        supplyControlFee = _supplyControlFee;
+        sellFee = _sellFee;
     }
 
     /**
@@ -212,6 +233,8 @@ contract FjordContract is ERC20, Ownable {
         @param _addr address
      */
     function setPairFee(address _addr) external onlyOwner {
+        require(!_pairWithFee[_addr], "Already Set");
+        emit LogSetPairWithFee(_addr);
         _pairWithFee[_addr] = true;
     }
 
@@ -220,6 +243,31 @@ contract FjordContract is ERC20, Ownable {
         @param _addr address
      */
     function toggleWhitelist(address _addr) external onlyOwner {
+        emit LogAddressWhitelistChanged(_addr, _isFeeExempt[_addr], !_isFeeExempt[_addr]);
         _isFeeExempt[_addr] = !_isFeeExempt[_addr];
+    }
+
+    function setAutoLiquidityFund(address _autoLiquidityFund) external onlyOwner validRecipient(_autoLiquidityFund) {
+        require(_autoLiquidityFund != autoLiquidityFund, "Nothing Changed");
+        emit LogAutoLiquidityFundChanged(autoLiquidityFund, _autoLiquidityFund);
+        autoLiquidityFund = _autoLiquidityFund;
+    }
+
+    function setTreasuryFund(address _treasuryFund) external onlyOwner validRecipient(_treasuryFund) {
+        require(_treasuryFund != treasuryFund, "Nothing Changed");
+        emit LogTreasuryFundChanged(treasuryFund, _treasuryFund);
+        treasuryFund = _treasuryFund;
+    }
+
+    function setRiskFreeFund(address _njordRiskFreeFund) external onlyOwner validRecipient(_njordRiskFreeFund) {
+        require(_njordRiskFreeFund != njordRiskFreeFund, "Nothing Changed");
+        emit LogRiskFreeFundChanged(njordRiskFreeFund, _njordRiskFreeFund);
+        njordRiskFreeFund = _njordRiskFreeFund;
+    }
+
+    function setSupplyControl(address _supplyControl) external onlyOwner validRecipient(_supplyControl) {
+        require(_supplyControl != supplyControl, "Nothing Changed");
+        emit LogSupplyControlChanged(supplyControl, _supplyControl);
+        supplyControl = _supplyControl;
     }
 }

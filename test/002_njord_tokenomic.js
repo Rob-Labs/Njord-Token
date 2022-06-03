@@ -333,4 +333,46 @@ describe("Njord Token Tokenomic Test", function () {
       oldCirc.add(oldCirc.mul(REBASE_RATE).div(REBASE_RATE_DECIMAL)),
     );
   });
+
+  it("Calculate Rebase Rate", async function () {
+    const oldCirc = await token.getCirculatingSupply();
+    const buyValue = parseUnits("1", 18);
+    await pancakeRouterContract
+      .connect(client1)
+      .swapExactETHForTokens(0, buyPath, client1.address, MaxUint256, {
+        value: buyValue,
+      });
+
+    await pancakeRouterContract
+      .connect(client1)
+      .swapExactETHForTokens(0, buyPath, client1.address, MaxUint256, {
+        value: buyValue,
+      });
+
+    const client1EmpireBalanceAfter = await token.balanceOf(client1.address);
+    await increase(duration.minutes(15));
+
+    // sell test to trigger rebase
+    await token
+      .connect(client1)
+      .approve(pancakeRouterContract.address, client1EmpireBalanceAfter);
+
+    await pancakeRouterContract
+      .connect(client1)
+      .swapExactTokensForETHSupportingFeeOnTransferTokens(
+        client1EmpireBalanceAfter,
+        0,
+        sellPath,
+        client1.address,
+        MaxUint256,
+      );
+
+    const REBASE_RATE = 2362;
+    const REBASE_RATE_DECIMAL = 10000000;
+    const newCirc = await token.getCirculatingSupply();
+
+    expect(newCirc).to.eq(
+      oldCirc.add(oldCirc.mul(REBASE_RATE).div(REBASE_RATE_DECIMAL)),
+    );
+  });
 });

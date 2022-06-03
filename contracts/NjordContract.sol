@@ -35,6 +35,7 @@ contract NjordContract is ERC20Detailed, Ownable {
     event LogBotBlacklisted(address botAddress, bool blacklistStatus);
     event LogWhitelistAdded(address account);
     event LogWhitelistRemoved(address account);
+    event LogFeeChanged(uint256 liquidityFee, uint256 treasuryFee, uint256 njordRiskFreeFundFee, uint256 supplyControlFee, uint256 sellFee);
 
     IPancakeSwapPair public pairContract;
     mapping(address => bool) public _isFeeExempt;
@@ -181,6 +182,21 @@ contract NjordContract is ERC20Detailed, Ownable {
         pairContract.sync();
 
         emit LogRebase(epoch, _totalSupply);
+    }
+
+    function setFee(
+        uint256 _liquidityFee,
+        uint256 _treasuryFee,
+        uint256 _njordRiskFreeFundFee,
+        uint256 _supplyControlFee,
+        uint256 _sellFee
+    ) external onlyOwner {
+        emit LogFeeChanged(_liquidityFee, _treasuryFee, _njordRiskFreeFundFee, _supplyControlFee, _sellFee);
+        liquidityFee = _liquidityFee;
+        treasuryFee = _treasuryFee;
+        njordRiskFreeFundFee = _njordRiskFreeFundFee;
+        supplyControlFee = _supplyControlFee;
+        sellFee = _sellFee;
     }
 
     function toggleTransferStatus() external onlyOwner {
