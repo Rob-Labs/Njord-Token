@@ -232,7 +232,7 @@ contract FjordContract is ERC20, Ownable, ReentrancyGuard {
         @notice set new pair address with fee
         @param _addr address
      */
-    function setPairFee(address _addr) external onlyOwner {
+    function setPairFee(address _addr) external validRecipient(_addr) onlyOwner {
         require(!_pairWithFee[_addr], "Already Set");
         emit LogSetPairWithFee(_addr);
         _pairWithFee[_addr] = true;
