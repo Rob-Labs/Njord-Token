@@ -4,7 +4,7 @@ const { uniswapV2PairAbi } = require("./helpers/abi");
 // const dotenv = require("dotenv");
 
 const { zeroAddress, deadAddress } = require("./helpers/address");
-const { increase, duration } = require("./helpers/time");
+const { increase, duration, advanceBlock } = require("./helpers/time");
 const provider = ethers.provider;
 const {
   NJORD_TOTAL_SUPPLY,
@@ -624,12 +624,271 @@ describe("Njord Token", function () {
       });
     });
 
+    describe("setAutoLiquidityFund Function Test", function () {
+      beforeEach(async function () {
+        // Deploy contract
+        const Token = await ethers.getContractFactory("NjordContract");
+        token = await Token.deploy(
+          pancakeRouterContract.address,
+          autoLiquidityFund.address,
+          treasuryFund.address,
+          njordRiskFreeFund.address,
+          supplyControl.address,
+        );
+        await token.deployed();
+      });
+
+      it("Only Onwer can call this function", async function () {
+        await expect(
+          token
+            .connect(client1)
+            .setAutoLiquidityFund(newAutoLiquidityFund.address),
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+
+        await expect(
+          token
+            .connect(treasuryFund)
+            .setAutoLiquidityFund(newAutoLiquidityFund.address),
+        ).to.not.be.reverted;
+      });
+
+      it("Should Revert / Fail if set to Zero address", async function () {
+        await expect(
+          token.connect(treasuryFund).setAutoLiquidityFund(zeroAddress),
+        ).to.be.revertedWith("Address Zero Not Accepted");
+      });
+
+      it("Should Revert / Fail if set with same Value", async function () {
+        expect(await token.autoLiquidityFund()).to.eq(
+          autoLiquidityFund.address,
+        );
+        await expect(
+          token
+            .connect(treasuryFund)
+            .setAutoLiquidityFund(autoLiquidityFund.address),
+        ).to.be.revertedWith("Nothing Changed");
+      });
+
+      it("Should set correct value and emit event LogAutoLiquidityFundChanged", async function () {
+        expect(
+          await token
+            .connect(treasuryFund)
+            .setAutoLiquidityFund(newAutoLiquidityFund.address),
+        )
+          .to.emit(token, "LogAutoLiquidityFundChanged")
+          .withArgs(autoLiquidityFund.address, newAutoLiquidityFund.address);
+        expect(await token.autoLiquidityFund()).to.eq(
+          newAutoLiquidityFund.address,
+        );
+      });
+    });
+
+    describe("setTreasuryFund Function Test", function () {
+      beforeEach(async function () {
+        // Deploy contract
+        const Token = await ethers.getContractFactory("NjordContract");
+        token = await Token.deploy(
+          pancakeRouterContract.address,
+          autoLiquidityFund.address,
+          treasuryFund.address,
+          njordRiskFreeFund.address,
+          supplyControl.address,
+        );
+        await token.deployed();
+      });
+
+      it("Only Onwer can call this function", async function () {
+        await expect(
+          token.connect(client1).setTreasuryFund(newTreasuryFund.address),
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+
+        await expect(
+          token.connect(treasuryFund).setTreasuryFund(newTreasuryFund.address),
+        ).to.not.be.reverted;
+      });
+
+      it("Should Revert / Fail if set to Zero address", async function () {
+        await expect(
+          token.connect(treasuryFund).setTreasuryFund(zeroAddress),
+        ).to.be.revertedWith("Address Zero Not Accepted");
+      });
+
+      it("Should Revert / Fail if set with same Value", async function () {
+        await expect(
+          token.connect(treasuryFund).setTreasuryFund(treasuryFund.address),
+        ).to.be.revertedWith("Nothing Changed");
+      });
+
+      it("Should set correct value and emit event LogTreasuryFundChanged", async function () {
+        expect(
+          await token
+            .connect(treasuryFund)
+            .setTreasuryFund(newTreasuryFund.address),
+        )
+          .to.emit(token, "LogTreasuryFundChanged")
+          .withArgs(treasuryFund.address, newTreasuryFund.address);
+        expect(await token.treasuryFund()).to.eq(newTreasuryFund.address);
+      });
+    });
+
+    describe("setRiskFreeFund Function Test", function () {
+      beforeEach(async function () {
+        // Deploy contract
+        const Token = await ethers.getContractFactory("NjordContract");
+        token = await Token.deploy(
+          pancakeRouterContract.address,
+          autoLiquidityFund.address,
+          treasuryFund.address,
+          njordRiskFreeFund.address,
+          supplyControl.address,
+        );
+        await token.deployed();
+      });
+
+      it("Only Onwer can call this function", async function () {
+        await expect(
+          token.connect(client1).setRiskFreeFund(newNjordRiskFreeFund.address),
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+
+        await expect(
+          token
+            .connect(treasuryFund)
+            .setRiskFreeFund(newNjordRiskFreeFund.address),
+        ).to.not.be.reverted;
+      });
+
+      it("Should Revert / Fail if set to Zero address", async function () {
+        await expect(
+          token.connect(treasuryFund).setRiskFreeFund(zeroAddress),
+        ).to.be.revertedWith("Address Zero Not Accepted");
+      });
+
+      it("Should Revert / Fail if set with same Value", async function () {
+        await expect(
+          token
+            .connect(treasuryFund)
+            .setRiskFreeFund(njordRiskFreeFund.address),
+        ).to.be.revertedWith("Nothing Changed");
+      });
+
+      it("Should set correct value and emit event LogRiskFreeFundChanged", async function () {
+        expect(
+          await token
+            .connect(treasuryFund)
+            .setRiskFreeFund(newNjordRiskFreeFund.address),
+        )
+          .to.emit(token, "LogRiskFreeFundChanged")
+          .withArgs(njordRiskFreeFund.address, newNjordRiskFreeFund.address);
+        expect(await token.njordRiskFreeFund()).to.eq(
+          newNjordRiskFreeFund.address,
+        );
+      });
+    });
+
+    describe("setSupplyControl Function Test", function () {
+      beforeEach(async function () {
+        // Deploy contract
+        const Token = await ethers.getContractFactory("NjordContract");
+        token = await Token.deploy(
+          pancakeRouterContract.address,
+          autoLiquidityFund.address,
+          treasuryFund.address,
+          njordRiskFreeFund.address,
+          supplyControl.address,
+        );
+        await token.deployed();
+      });
+
+      it("Only Onwer can call this function", async function () {
+        await expect(
+          token.connect(client1).setSupplyControl(newSupplyControl.address),
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+
+        await expect(
+          token
+            .connect(treasuryFund)
+            .setSupplyControl(newSupplyControl.address),
+        ).to.not.be.reverted;
+      });
+
+      it("Should Revert / Fail if set to Zero address", async function () {
+        await expect(
+          token.connect(treasuryFund).setSupplyControl(zeroAddress),
+        ).to.be.revertedWith("Address Zero Not Accepted");
+      });
+
+      it("Should Revert / Fail if set with same Value", async function () {
+        await expect(
+          token.connect(treasuryFund).setSupplyControl(supplyControl.address),
+        ).to.be.revertedWith("Nothing Changed");
+      });
+
+      it("Should set correct value and emit event LogSupplyControlChanged", async function () {
+        expect(
+          await token
+            .connect(treasuryFund)
+            .setSupplyControl(newSupplyControl.address),
+        )
+          .to.emit(token, "LogSupplyControlChanged")
+          .withArgs(supplyControl.address, newSupplyControl.address);
+        expect(await token.supplyControl()).to.eq(newSupplyControl.address);
+      });
+    });
+
+    describe("setPairAddress Function Test", function () {
+      beforeEach(async function () {
+        // Deploy contract
+        const Token = await ethers.getContractFactory("NjordContract");
+        token = await Token.deploy(
+          pancakeRouterContract.address,
+          autoLiquidityFund.address,
+          treasuryFund.address,
+          njordRiskFreeFund.address,
+          supplyControl.address,
+        );
+        await token.deployed();
+      });
+
+      it("Only Onwer can call this function", async function () {
+        await expect(
+          token.connect(client1).setPairAddress(newWallet.address),
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+
+        await expect(
+          token.connect(treasuryFund).setPairAddress(newWallet.address),
+        ).to.not.be.reverted;
+      });
+
+      it("Should Revert / Fail if set to Zero address", async function () {
+        await expect(
+          token.connect(treasuryFund).setPairAddress(zeroAddress),
+        ).to.be.revertedWith("Address Zero Not Accepted");
+      });
+
+      it("Should Revert / Fail if set with same Value", async function () {
+        let pairAddress = await token.pairAddress();
+        await expect(
+          token.connect(treasuryFund).setPairAddress(pairAddress),
+        ).to.be.revertedWith("Nothing Changed");
+      });
+
+      it("Should set correct value and emit event LogPairAddressChanged", async function () {
+        let pairAddress = await token.pairAddress();
+        expect(
+          await token.connect(treasuryFund).setPairAddress(newWallet.address),
+        )
+          .to.emit(token, "LogPairAddressChanged")
+          .withArgs(pairAddress, newWallet.address);
+        expect(await token.pairAddress()).to.eq(newWallet.address);
+      });
+    });
+
     /**
      * @TODO
      * function recoverERC20
      * function recoverBNB
-     * function setPairAddress
-     * function setFeeReceivers
+     * function manualSync
+     * function withdrawAllToTreasury
      */
   });
 
@@ -766,6 +1025,7 @@ describe("Njord Token", function () {
         );
         expect(newPairBal).to.eq(oldPairBal.add(INITIAL_NJORD_LIQUIDITY));
       });
+
       /**
        * help meeee
        */
@@ -795,6 +1055,7 @@ describe("Njord Token", function () {
       //   /**
       //    * remove liquidity
       //    */
+
       //   await pancakePairContract
       //     .connect(treasuryFund)
       //     .approve(pancakeRouterContract.address, MaxUint256);
@@ -813,7 +1074,7 @@ describe("Njord Token", function () {
       //   console.log(liquidityBalance);
       //   await pancakeRouterContract
       //     .connect(treasuryFund)
-      //     .removeLiquidityETHSupportingFeeOnTransferTokens(
+      //     .removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
       //       token.address,
       //       liquidityBalance,
       //       0,
@@ -827,98 +1088,5 @@ describe("Njord Token", function () {
       //   expect(liquidityBalanceAfter).to.be.equal(0);
       // });
     });
-
-    describe("Tokenomic Test", function () {
-      before(async function () {
-        // Deploy contract
-        const Token = await ethers.getContractFactory("NjordContract");
-        token = await Token.deploy(
-          pancakeRouterContract.address,
-          autoLiquidityFund.address,
-          treasuryFund.address,
-          njordRiskFreeFund.address,
-          supplyControl.address,
-        );
-        await token.deployed();
-
-        buyPath = [wbnbContract.address, token.address];
-        sellPath = [token.address, wbnbContract.address];
-
-        await token.connect(treasuryFund).toggleTradingStatus();
-        await token.connect(treasuryFund).toggleTransferStatus();
-        await token.connect(treasuryFund).setAutoRebase(true);
-
-        await token
-          .connect(treasuryFund)
-          .approve(pancakeRouterContract.address, MaxUint256);
-        const pairAddress = await token.pairAddress();
-        pancakePairContract = ethers.getContractAt(
-          uniswapV2PairAbi,
-          pairAddress,
-          ethers.provider,
-        );
-
-        /** add liquidity */
-        await pancakeRouterContract
-          .connect(treasuryFund)
-          .addLiquidityETH(
-            token.address,
-            INITIAL_NJORD_LIQUIDITY,
-            INITIAL_NJORD_LIQUIDITY,
-            INITIAL_BNB_LIQUIDITY,
-            treasuryFund.address,
-            Math.floor(Date.now() / 1000) + 60 * 10,
-            { value: INITIAL_BNB_LIQUIDITY },
-          );
-      });
-
-      it("Should Rebase", async function () {
-        const lastRebase = await token._lastRebasedTime();
-        await increase(duration.minutes(16));
-        const buyValue = parseUnits("1", 18);
-        await pancakeRouterContract
-          .connect(client1)
-          .swapExactETHForTokens(0, buyPath, client1.address, MaxUint256, {
-            value: buyValue,
-          });
-        await pancakeRouterContract
-          .connect(client1)
-          .swapExactETHForTokens(0, buyPath, client1.address, MaxUint256, {
-            value: buyValue,
-          });
-
-        const client1EmpireBalanceAfter = await token.balanceOf(
-          client1.address,
-        );
-
-        const contractEmpireBalanceAfter = await token.balanceOf(token.address);
-        console.log(client1EmpireBalanceAfter);
-        console.log(contractEmpireBalanceAfter);
-
-        // sell test
-        await token
-          .connect(client1)
-          .approve(pancakeRouterContract.address, client1EmpireBalanceAfter);
-
-        expect(
-          await pancakeRouterContract
-            .connect(client1)
-            .swapExactTokensForETHSupportingFeeOnTransferTokens(
-              client1EmpireBalanceAfter,
-              0,
-              sellPath,
-              client1.address,
-              MaxUint256,
-            ),
-        );
-        const newRebase = await token._lastRebasedTime();
-        console.log(lastRebase);
-        console.log(newRebase);
-      });
-    });
-
-    /**
-     * @TODO check transfer blacklisted address validation
-     */
   });
 });

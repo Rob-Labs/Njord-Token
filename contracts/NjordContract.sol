@@ -51,10 +51,10 @@ contract NjordContract is ERC20Detailed, Ownable {
     uint256 private constant INITIAL_FRAGMENTS_SUPPLY = 400 * 10**3 * 10**DECIMALS;
 
     uint256 public liquidityFee = 20;
-    uint256 public treasuryFee = 25;
-    uint256 public njordRiskFreeFundFee = 50;
+    uint256 public treasuryFee = 20;
+    uint256 public njordRiskFreeFundFee = 20;
     uint256 public sellFee = 20;
-    uint256 public supplyControlFee = 25;
+    uint256 public supplyControlFee = 20;
     uint256 public totalFee = liquidityFee.add(treasuryFee).add(njordRiskFreeFundFee).add(supplyControlFee);
     uint256 public feeDenominator = 1000;
 
@@ -426,19 +426,19 @@ contract NjordContract is ERC20Detailed, Ownable {
         autoLiquidityFund = _autoLiquidityFund;
     }
 
-    function SetTreasuryFund(address _treasuryFund) external onlyOwner validRecipient(_treasuryFund) {
+    function setTreasuryFund(address _treasuryFund) external onlyOwner validRecipient(_treasuryFund) {
         require(_treasuryFund != treasuryFund, "Nothing Changed");
         emit LogTreasuryFundChanged(treasuryFund, _treasuryFund);
         treasuryFund = _treasuryFund;
     }
 
-    function SetRiskFreeFund(address _njordRiskFreeFund) external onlyOwner validRecipient(_njordRiskFreeFund) {
+    function setRiskFreeFund(address _njordRiskFreeFund) external onlyOwner validRecipient(_njordRiskFreeFund) {
         require(_njordRiskFreeFund != njordRiskFreeFund, "Nothing Changed");
         emit LogRiskFreeFundChanged(njordRiskFreeFund, _njordRiskFreeFund);
         njordRiskFreeFund = _njordRiskFreeFund;
     }
 
-    function SetSupplyControl(address _supplyControl) external onlyOwner validRecipient(_supplyControl) {
+    function setSupplyControl(address _supplyControl) external onlyOwner validRecipient(_supplyControl) {
         require(_supplyControl != supplyControl, "Nothing Changed");
         emit LogSupplyControlChanged(supplyControl, _supplyControl);
         supplyControl = _supplyControl;
