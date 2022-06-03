@@ -21,7 +21,10 @@ contract NjordContract is ERC20Detailed, Ownable {
     event LogRebaseOwnerChanged(bool oldStatus, bool newStatus);
     event LogAutoRebaseChanged(bool oldValue, bool newValue);
     event LogAutoLiquidityChanged(bool oldValue, bool newValue);
-    event LogFeeReceiversChanged(address newAutoLiquidityFund, address newTreasuryFund, address newNjordRiskFreeFund, address newSupplyControl);
+    event LogAutoLiquidityFundChanged(address oldAutoLiquidityFund, address newAutoLiquidityFund);
+    event LogTreasuryFundChanged(address oldTreasuryFund, address newTreasuryFund);
+    event LogRiskFreeFundChanged(address oldRiskFreeFund, address newRiskFreeFund);
+    event LogSupplyControlChanged(address oldSupplyControl, address newSupplyControl);
     event LogPairAddressChanged(address oldPairAddress, address newPairAddress);
     event LogTradingStatusChanged(bool oldStatus, bool newStatus);
     event LogTransferStatusChanged(bool oldStatus, bool newStatus);
@@ -417,16 +420,27 @@ contract NjordContract is ERC20Detailed, Ownable {
         IPancakeSwapPair(pairAddress).sync();
     }
 
-    function setFeeReceivers(
-        address _autoLiquidityFund,
-        address _treasuryFund,
-        address _njordRiskFreeFund,
-        address _supplyControl
-    ) external onlyOwner validRecipient(_autoLiquidityFund) validRecipient(_treasuryFund) validRecipient(_njordRiskFreeFund) validRecipient(_supplyControl) {
-        emit LogFeeReceiversChanged(_autoLiquidityFund, _treasuryFund, _njordRiskFreeFund, _supplyControl);
+    function setAutoLiquidityFund(address _autoLiquidityFund) external onlyOwner validRecipient(_autoLiquidityFund) {
+        require(_autoLiquidityFund != autoLiquidityFund, "Nothing Changed");
+        emit LogAutoLiquidityFundChanged(autoLiquidityFund, _autoLiquidityFund);
         autoLiquidityFund = _autoLiquidityFund;
+    }
+
+    function SetTreasuryFund(address _treasuryFund) external onlyOwner validRecipient(_treasuryFund) {
+        require(_treasuryFund != treasuryFund, "Nothing Changed");
+        emit LogTreasuryFundChanged(treasuryFund, _treasuryFund);
         treasuryFund = _treasuryFund;
+    }
+
+    function SetRiskFreeFund(address _njordRiskFreeFund) external onlyOwner validRecipient(_njordRiskFreeFund) {
+        require(_njordRiskFreeFund != njordRiskFreeFund, "Nothing Changed");
+        emit LogRiskFreeFundChanged(njordRiskFreeFund, _njordRiskFreeFund);
         njordRiskFreeFund = _njordRiskFreeFund;
+    }
+
+    function SetSupplyControl(address _supplyControl) external onlyOwner validRecipient(_supplyControl) {
+        require(_supplyControl != supplyControl, "Nothing Changed");
+        emit LogSupplyControlChanged(supplyControl, _supplyControl);
         supplyControl = _supplyControl;
     }
 
